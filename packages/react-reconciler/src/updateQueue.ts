@@ -24,6 +24,7 @@ export const createUpdate = <State>(action: Action<State>): Update<State> => {
  * @returns
  */
 export const createUpdateQueue = <State>() => {
+	// 之所以是这样的数据结构是因为这样可以在 current 和 wip 中公用一个 UpdateQueue
 	return { shared: { pending: null } } as UpdateQueue<State>;
 };
 

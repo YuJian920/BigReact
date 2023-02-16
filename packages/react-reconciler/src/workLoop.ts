@@ -1,18 +1,45 @@
 import { beginWork } from './beginWork';
 import { completeWork } from './completeWork';
-import { FiberNode } from './fiber';
+import { createWorkInProgess, FiberNode, FiberRootNode } from './fiber';
+import { HostRoot } from './workTags';
 
 let workInProgress: FiberNode | null = null;
 
 /**
- * 初始化 renderRoot
+ * 初始化 workInProgress
  * @param fiber
  */
-const prepareFreshStack = (fiber: FiberNode) => {
-	workInProgress = fiber;
+const prepareFreshStack = (root: FiberRootNode) => {
+	// 初始化也可以说是确认 workInProgress 的位置
+	workInProgress = createWorkInProgess(root.current, {});
 };
 
-const renderRoot = (root: FiberNode) => {
+export const scheduleUpdateOnFiber = (fiber: FiberNode) => {
+	// 对于 mount 阶段，传入的 fiberNode 是 hostRootFiber
+	// 对于其他阶段，传入的 fiberNode 是触发更新的 fiberNode
+	// 我们需要从我们当前的 fiberNode 一直遍历到 fiberRootNode
+	const root = markUpdateFromFiberToRoot(fiber);
+	// 然后从 fiberRootNode 开始更新流程
+	renderRoot(root);
+};
+
+/**
+ * 负责从传入 fiberNode 一直遍历到 fiberRootNode 并返回
+ * @param fiber
+ */
+const markUpdateFromFiberToRoot = (fiber: FiberNode) => {
+	let node = fiber;
+	let parent = fiber.return;
+	while (parent !== null) {
+		node = parent;
+		parent = node.return;
+	}
+	// 没有 父Node 且 fiberNode 的 Tag 为 HostRoot
+	if (node.tag === HostRoot) return node.stateNode;
+	return null;
+};
+
+const renderRoot = (root: FiberRootNode) => {
 	prepareFreshStack(root);
 
 	do {

@@ -1,7 +1,7 @@
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols';
-import type { Type, Key, Ref, Props, ReactElement } from 'shared/ReactTypes';
+import type { ReactElementType, Key, Ref, Props, ReactElement } from 'shared/ReactTypes';
 
-const ReactElement = function (type: Type, key: Key, ref: Ref, props: Props): ReactElement {
+const ReactElement = function (type: ReactElementType, key: Key, ref: Ref, props: Props): ReactElement {
 	const element = {
 		$$typeof: REACT_ELEMENT_TYPE,
 		type,
@@ -21,7 +21,7 @@ const ReactElement = function (type: Type, key: Key, ref: Ref, props: Props): Re
  * @param maybeChildren ReactElement 的子元素
  * @returns ReactElement
  */
-export const jsx = (type: Type, config: any, ...maybeChildren: any) => {
+export const jsx = (type: ReactElementType, config: any, ...maybeChildren: any) => {
 	let key: Key = null;
 	const props: Props = {};
 	let ref: Ref = null;
@@ -57,7 +57,7 @@ export const jsx = (type: Type, config: any, ...maybeChildren: any) => {
 	return ReactElement(type, key, ref, props);
 };
 
-export const jsxDEV = (type: Type, config: any) => {
+export const jsxDEV = (type: ReactElementType, config: any) => {
 	let key: Key = null;
 	const props: Props = {};
 	let ref: Ref = null;
