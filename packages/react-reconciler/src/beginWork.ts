@@ -28,6 +28,8 @@ export const beginWork = (wip: FiberNode) => {
 			if (__DEV__) console.warn('未实现的类型');
 			break;
 	}
+
+	return null;
 };
 
 /**
