@@ -1,4 +1,4 @@
-import { appendInitialChild, createInstance, createTextInstance } from 'hostConfig';
+import { appendInitialChild, Container, createInstance, createTextInstance } from 'hostConfig';
 import { FiberNode } from './fiber';
 import { NoFlags } from './fiberFlags';
 import { HostRoot, HostComponent, HostText } from './workTags';
@@ -22,7 +22,7 @@ export const completeWork = (wip: FiberNode) => {
 			} else {
 				// mount 阶段 HostComponent 的 completeWork 工作流程:
 				// 1. 构建离屏 DOM 树
-				const instance = createInstance(wip.tag, newProps);
+				const instance = createInstance(wip.type, newProps);
 				// 2. 将 DOM 插入到 DOM 树中
 				appendAllChildren(instance, wip);
 				wip.stateNode = instance;
@@ -52,7 +52,7 @@ export const completeWork = (wip: FiberNode) => {
  * @param wip
  * @returns
  */
-const appendAllChildren = (parent: FiberNode, wip: FiberNode) => {
+const appendAllChildren = (parent: Container, wip: FiberNode) => {
 	let node = wip.child;
 
 	while (node !== null) {

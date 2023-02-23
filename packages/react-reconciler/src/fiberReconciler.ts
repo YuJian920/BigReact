@@ -1,5 +1,5 @@
 import { Container } from 'hostConfig';
-import { ReactElement } from 'shared/ReactTypes';
+import { ReactElementType } from 'shared/ReactTypes';
 import { FiberNode, FiberRootNode } from './fiber';
 import { createUpdate, createUpdateQueue, enqueueUpdate, UpdateQueue } from './updateQueue';
 import { scheduleUpdateOnFiber } from './workLoop';
@@ -26,13 +26,13 @@ export const createContainer = (container: Container) => {
  * @param element
  * @param root
  */
-export const updateContainer = (element: ReactElement | null, root: FiberRootNode) => {
+export const updateContainer = (element: ReactElementType | null, root: FiberRootNode) => {
 	// 从 FiberRootNode 的 current 中取得 hostRootFiber
 	const hostRootFiber = root.current;
 	// 创建一个类型为 ReactElement 的 update
-	const update = createUpdate<ReactElement>(element);
+	const update = createUpdate<ReactElementType | null>(element);
 	// 将创建的 update 插入到 hostRootFiber 的 updateQueue
-	enqueueUpdate<ReactElement>(hostRootFiber.updateQueue as UpdateQueue<ReactElement>, update);
+	enqueueUpdate(hostRootFiber.updateQueue as UpdateQueue<ReactElementType | null>, update);
 	// 链接 workLoop 更新流程
 	scheduleUpdateOnFiber(hostRootFiber);
 

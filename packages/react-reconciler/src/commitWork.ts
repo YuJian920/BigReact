@@ -56,7 +56,9 @@ const commitPlacement = (finishedWork: FiberNode) => {
 	const hostParent = getHostParent(finishedWork);
 	// 2. 待插入的 DOM
 	// 遍历到 HostComponent / HostText 类型的子元素插入到父节点
-	appendPlacementNodeIntoContainer(finishedWork, hostParent);
+	if (hostParent !== null) {
+		appendPlacementNodeIntoContainer(finishedWork, hostParent);
+	}
 };
 
 /**
@@ -64,7 +66,7 @@ const commitPlacement = (finishedWork: FiberNode) => {
  * @param fiber
  * @returns
  */
-const getHostParent = (fiber: FiberNode) => {
+const getHostParent = (fiber: FiberNode): Container | null => {
 	let parent = fiber.return;
 
 	// 向上寻找 HostComponent 类型的节点并返回
@@ -83,6 +85,8 @@ const getHostParent = (fiber: FiberNode) => {
 		parent = parent.return;
 	}
 	if (__DEV__) console.warn('未找到 Host parent');
+
+	return null;
 };
 
 /**
