@@ -31,7 +31,7 @@ export const scheduleUpdateOnFiber = (fiber: FiberNode) => {
  */
 const markUpdateFromFiberToRoot = (fiber: FiberNode) => {
 	let node = fiber;
-	let parent = fiber.return;
+	let parent = node.return;
 	while (parent !== null) {
 		node = parent;
 		parent = node.return;
@@ -49,7 +49,7 @@ const renderRoot = (root: FiberRootNode) => {
 			workLoop();
 			break;
 		} catch (error) {
-			if (__DEV__) console.warn('workLoop 发生错误');
+			if (__DEV__) console.warn('workLoop 发生错误', error);
 			workInProgress = null;
 		}
 	} while (true);

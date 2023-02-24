@@ -1,4 +1,4 @@
-import { ReactElement } from 'shared/ReactTypes';
+import type { ReactElementType } from 'shared/ReactTypes';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
@@ -39,7 +39,7 @@ export const beginWork = (wip: FiberNode) => {
  */
 const updateHostRoot = (wip: FiberNode) => {
 	const baseState = wip.memoizedState;
-	const updateQueue = wip.updateQueue as UpdateQueue<ReactElement>;
+	const updateQueue = wip.updateQueue as UpdateQueue<Element>;
 	// 取出 pending
 	const pending = updateQueue.shared.pending;
 	updateQueue.shared.pending = null;
@@ -66,7 +66,7 @@ const updateHostComponent = (wip: FiberNode) => {
  * @param wip
  * @param children
  */
-const reconcileChildren = (wip: FiberNode, children?: ReactElement) => {
+const reconcileChildren = (wip: FiberNode, children?: ReactElementType) => {
 	// 对比子节点 current fiberNode 和子节点的 reactElement
 	const current = wip.alternate;
 

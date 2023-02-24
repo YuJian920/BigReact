@@ -7,10 +7,10 @@ let nextEffect: FiberNode | null = null;
 
 export const commitMutationEffects = (finishedWork: FiberNode) => {
 	nextEffect = finishedWork;
-	const child = nextEffect.child;
 
 	// 遍历树
 	while (nextEffect !== null) {
+		const child: FiberNode | null = nextEffect.child;
 		// 判断子树中是否存在 MutationMask
 		if ((nextEffect.subtreeFlags & MutationMask) !== NoFlags && child !== null) {
 			// 继续向下遍历

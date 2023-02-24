@@ -1,8 +1,7 @@
-import type { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
-import type { Flags } from './fiberFlags';
-import { NoFlags } from './fiberFlags';
-import { FunctionComponents, HostComponent, WorkTag } from './workTags';
 import type { Container } from 'hostConfig';
+import type { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
+import { Flags, NoFlags } from './fiberFlags';
+import { FunctionComponent, HostComponent, WorkTag } from './workTags';
 
 export class FiberNode {
 	tag: WorkTag;
@@ -71,7 +70,7 @@ export class FiberRootNode {
  * @param pendingProps
  * @returns
  */
-export const createWorkInProgess = (current: FiberNode, pendingProps: Props) => {
+export const createWorkInProgess = (current: FiberNode, pendingProps: Props): FiberNode => {
 	// 由于 React 采用的是双缓存机制，所以需要从 current 的 alternate 中获取到 WorkInProgess
 	let wip = current.alternate;
 
@@ -110,7 +109,7 @@ export const createWorkInProgess = (current: FiberNode, pendingProps: Props) => 
  */
 export const createFiberFromElement = (element: ReactElementType): FiberNode => {
 	const { type, key, props } = element;
-	let fiberTag: WorkTag = FunctionComponents;
+	let fiberTag: WorkTag = FunctionComponent;
 
 	if (typeof type === 'string') {
 		fiberTag = HostComponent;
@@ -118,7 +117,7 @@ export const createFiberFromElement = (element: ReactElementType): FiberNode => 
 		console.warn('未定义的 type 类型', element);
 	}
 	const fiber = new FiberNode(fiberTag, props, key);
-	fiber.type = fiber;
+	fiber.type = type;
 
 	return fiber;
 };

@@ -1,5 +1,5 @@
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols';
-import { ReactElement } from 'shared/ReactTypes';
+import { ReactElementType } from 'shared/ReactTypes';
 import { createFiberFromElement, FiberNode } from './fiber';
 import { Placement } from './fiberFlags';
 import { HostText } from './workTags';
@@ -15,7 +15,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 * @param currentFiber
 	 * @param element
 	 */
-	const reconcileSingleElement = (returnFiber: FiberNode, currentFiber: FiberNode | null, element?: ReactElement) => {
+	const reconcileSingleElement = (returnFiber: FiberNode, currentFiber: FiberNode | null, element?: ReactElementType) => {
 		// 创建子元素的 FiberNode
 		const fiber = createFiberFromElement(element);
 		fiber.return = returnFiber;
@@ -59,7 +59,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 * @param currentFiber 待比较 子fiberNode
 	 * @param newChild 待比较 子ReactElement
 	 */
-	const reconcileChildFibers = (returnFiber: FiberNode, currentFiber: FiberNode | null, newChild?: ReactElement) => {
+	const reconcileChildFibers = (returnFiber: FiberNode, currentFiber: FiberNode | null, newChild?: ReactElementType) => {
 		if (typeof newChild === 'object' && newChild !== null) {
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE:
