@@ -125,7 +125,7 @@ const completeUnitOfWork = (fiber: FiberNode) => {
 
 	do {
 		// 对 workInProgress 节点执行 completeWork
-		completeWork(fiber);
+		completeWork(node);
 		// sibling 和 beginWork 的 next 返回相同 —— 存在 null 和 非null 两种情况
 		const sibling = node.sibling;
 

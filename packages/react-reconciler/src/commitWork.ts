@@ -98,7 +98,7 @@ const getHostParent = (fiber: FiberNode): Container | null => {
 const appendPlacementNodeIntoContainer = (finishedWork: FiberNode, hostParent: Container) => {
 	if (finishedWork.tag === HostComponent || finishedWork.tag === HostText) {
 		// 插入寻找到的 HostComponent / HostText 到 hostParent
-		appendChildToContainer(finishedWork.stateNode, hostParent);
+		appendChildToContainer(hostParent, finishedWork.stateNode);
 		return;
 	}
 	// 节点自身不是 HostComponent / HostText，便利子节点
