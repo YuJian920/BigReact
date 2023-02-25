@@ -1,3 +1,4 @@
+import { Dispatch } from 'react/src/currentDispatcher';
 import type { Action } from 'shared/ReactTypes';
 
 export interface Update<State> {
@@ -8,6 +9,7 @@ export interface UpdateQueue<State> {
 	shared: {
 		pending: Update<State> | null;
 	};
+	dispatch: Dispatch<State> | null;
 }
 
 /**
@@ -25,7 +27,7 @@ export const createUpdate = <State>(action: Action<State>): Update<State> => {
  */
 export const createUpdateQueue = <State>() => {
 	// 之所以是这样的数据结构是因为这样可以在 current 和 wip 中公用一个 UpdateQueue
-	return { shared: { pending: null } } as UpdateQueue<State>;
+	return { shared: { pending: null }, dispatch: null } as UpdateQueue<State>;
 };
 
 /**
