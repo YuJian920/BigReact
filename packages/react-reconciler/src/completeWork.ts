@@ -1,7 +1,7 @@
 import { appendInitialChild, Container, createInstance, createTextInstance } from 'hostConfig';
 import { FiberNode } from './fiber';
 import { NoFlags } from './fiberFlags';
-import { HostRoot, HostComponent, HostText } from './workTags';
+import { HostRoot, HostComponent, HostText, FunctionComponent } from './workTags';
 
 /**
  * 负责 React DFS 当中的归阶段
@@ -38,6 +38,9 @@ export const completeWork = (wip: FiberNode) => {
 				const instance = createTextInstance(newProps.content);
 				wip.stateNode = instance;
 			}
+			bubbleProperties(wip);
+			return null;
+		case FunctionComponent:
 			bubbleProperties(wip);
 			return null;
 		default:
@@ -94,6 +97,7 @@ const bubbleProperties = (wip: FiberNode) => {
 	let subtreeFlags = NoFlags;
 	let child = wip.child;
 
+	// 遍历子节点
 	while (child !== null) {
 		subtreeFlags |= child.subtreeFlags;
 		subtreeFlags |= child.flags;
@@ -102,5 +106,6 @@ const bubbleProperties = (wip: FiberNode) => {
 		child = child.sibling;
 	}
 
+	// 将子节点的 flag 和 subtreeFlags 标记到 wip 上 subtreeFlags
 	wip.subtreeFlags |= subtreeFlags;
 };

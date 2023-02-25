@@ -12,6 +12,7 @@ export const commitMutationEffects = (finishedWork: FiberNode) => {
 	while (nextEffect !== null) {
 		const child: FiberNode | null = nextEffect.child;
 		// 判断子树中是否存在 MutationMask
+		// 也就是说如果有一个子节点中存在一个 flag，不管层级有多深，都会遍历到它然后再不断向上执行插入
 		if ((nextEffect.subtreeFlags & MutationMask) !== NoFlags && child !== null) {
 			// 继续向下遍历
 			nextEffect = child;

@@ -1,8 +1,9 @@
 import type { ReactElementType } from 'shared/ReactTypes';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
+import { renderWithHooks } from './fiberHooks';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
-import { HostComponent, HostRoot, HostText } from './workTags';
+import { FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
 
 /**
  * 负责 React DFS 当中的递阶段，与 React Element 比较后返回子 Fiber 节点
@@ -24,12 +25,22 @@ export const beginWork = (wip: FiberNode) => {
 		case HostText:
 			// HostText 不存在子节点，没有 beginWork 工作流程
 			return null;
+		case FunctionComponent:
+			return updateFunctionComponent(wip);
 		default:
 			if (__DEV__) console.warn('未实现的类型');
 			break;
 	}
 
 	return null;
+};
+
+const updateFunctionComponent = (wip: FiberNode) => {
+	// 对于一个 FunctionComponent 而言，child 就是它的执行结果
+	const nextChildren = renderWithHooks(wip);
+
+	reconcileChildren(wip, nextChildren);
+	return wip.child;
 };
 
 /**

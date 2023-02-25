@@ -18,7 +18,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	const reconcileSingleElement = (
 		returnFiber: FiberNode,
 		currentFiber: FiberNode | null,
-		element?: ReactElementType
+		element: ReactElementType
 	) => {
 		// 创建子元素的 FiberNode
 		const fiber = createFiberFromElement(element);
