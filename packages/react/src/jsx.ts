@@ -14,6 +14,10 @@ const ReactElement = function (type: Type, key: Key, ref: Ref, props: Props): Re
 	return element;
 };
 
+export const isValidElement = (object: any) => {
+	return typeof object === 'object' && object !== null && object.$$typeof === REACT_ELEMENT_TYPE;
+};
+
 /**
  * 将 JSX 转换为 ReactElement
  * @param type ReactElement 类型
