@@ -23,6 +23,7 @@ export class FiberNode {
 	updateQueue: unknown;
 	flags: Flags;
 	subtreeFlags: Flags;
+	deletions: FiberNode[] | null;
 
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		// Fiber 节点本身的信息
@@ -47,6 +48,7 @@ export class FiberNode {
 		this.updateQueue = null; // 更新机制
 		this.flags = NoFlags; // 标记 Fiber 节点的副作用
 		this.subtreeFlags = NoFlags; // 子树中的标记
+		this.deletions = null; // 保存当前节点下需要被删除的子节点
 	}
 }
 
@@ -90,6 +92,7 @@ export const createWorkInProgess = (current: FiberNode, pendingProps: Props): Fi
 		// 清空副作用
 		wip.flags = NoFlags;
 		wip.subtreeFlags = NoFlags;
+		wip.deletions = null;
 	}
 
 	// 复用元素

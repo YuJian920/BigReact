@@ -1,7 +1,15 @@
 import { appendInitialChild, Container, createInstance, createTextInstance } from 'hostConfig';
 import { FiberNode } from './fiber';
-import { NoFlags } from './fiberFlags';
+import { NoFlags, Update } from './fiberFlags';
 import { HostRoot, HostComponent, HostText, FunctionComponent } from './workTags';
+
+/**
+ * 标记 Update
+ * @param fiber FiberNode
+ */
+const markUpdate = (fiber: FiberNode) => {
+	fiber.flags |= Update;
+};
 
 /**
  * 负责 React DFS 当中的归阶段
@@ -32,6 +40,9 @@ export const completeWork = (wip: FiberNode) => {
 		case HostText:
 			if (current !== null && wip.stateNode) {
 				// update
+				const oldText = current.memoizedProps.content;
+				const newText = newProps.content;
+				if (oldText !== newText) markUpdate(wip);
 			} else {
 				// mount 阶段 HostText 的 completeWork 工作流程:
 				// 1. 构建离屏 DOM 树
