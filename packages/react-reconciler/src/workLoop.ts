@@ -18,7 +18,7 @@ const prepareFreshStack = (root: FiberRootNode) => {
 
 export const scheduleUpdateOnFiber = (fiber: FiberNode) => {
 	// 对于 mount 阶段，传入的 fiberNode 是 hostRootFiber
-	// 对于其他阶段，传入的 fiberNode 是触发更新的 fiberNode
+	// 对于 update 阶段，传入的 fiberNode 是触发更新的 fiberNode
 	// 我们需要从我们当前的 fiberNode 一直遍历到 fiberRootNode
 	const root = markUpdateFromFiberToRoot(fiber);
 	// 然后从 fiberRootNode 开始更新流程

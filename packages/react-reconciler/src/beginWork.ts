@@ -60,6 +60,7 @@ const updateHostRoot = (wip: FiberNode) => {
 
 	// 在 updateContainer 函数中，为 hostRootFiber 插入的 pending 是 ReactElement
 	// 计算完成的 memoizedState 也是 ReactElement
+	// update 中 wip 的 memoizedState 来自 current 在 createWorkInProgess 中复制
 	const nextChildren = wip.memoizedState;
 	reconcileChildren(wip, nextChildren);
 	return wip.child;

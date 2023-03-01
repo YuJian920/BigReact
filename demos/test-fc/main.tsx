@@ -7,11 +7,8 @@ const App = () => {
 
 const Child = () => {
 	const [num, setNum] = useState(100);
-	return (
-		<div>
-			<span>{num}</span>
-		</div>
-	);
+	window.setNum = setNum;
+	return <div>{num === 3 ? <span>is three</span> : <span>{num}</span>}</div>;
 };
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);

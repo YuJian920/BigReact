@@ -100,7 +100,7 @@ const commitDeletion = (childToDelete: FiberNode) => {
 	// 移除 DOM 节点
 	if (rootHostNode !== null) {
 		const hostParent = getHostParent(childToDelete);
-		if (hostParent !== null) removeChild(rootHostNode, hostParent);
+		if (hostParent !== null) removeChild((rootHostNode as FiberNode).stateNode, hostParent);
 	}
 
 	childToDelete.return = null;
