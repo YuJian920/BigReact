@@ -1,5 +1,7 @@
 import { FiberNode } from 'react-reconciler/src/fiber';
 import { HostText } from 'react-reconciler/src/workTags';
+import { Props } from 'shared/ReactTypes';
+import { updateFiberProps } from './SyntheticEvent';
 
 export type Container = Element;
 export type Instacne = Element;
@@ -10,8 +12,10 @@ export type TextInstacne = Text;
  * @param args
  * @returns
  */
-export const createInstance = (type: string, props: any): Instacne => {
+export const createInstance = (type: string, props: Props): Instacne => {
 	const element = document.createElement(type);
+	// 更新属性
+	updateFiberProps(element, props);
 	return element;
 };
 

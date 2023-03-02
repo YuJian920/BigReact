@@ -1,4 +1,5 @@
 import { appendInitialChild, Container, createInstance, createTextInstance } from 'hostConfig';
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 import { FiberNode } from './fiber';
 import { NoFlags, Update } from './fiberFlags';
 import { HostRoot, HostComponent, HostText, FunctionComponent } from './workTags';
@@ -26,7 +27,10 @@ export const completeWork = (wip: FiberNode) => {
 			return null;
 		case HostComponent:
 			if (current !== null && wip.stateNode) {
-				// update
+				// update 阶段 HostComponent 的 completeWork 工作流程:
+				// 1. props 是否变化
+				// 2. 标记 Update
+				updateFiberProps(wip.stateNode, newProps);
 			} else {
 				// mount 阶段 HostComponent 的 completeWork 工作流程:
 				// 1. 构建离屏 DOM 树
