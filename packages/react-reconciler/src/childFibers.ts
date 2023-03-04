@@ -4,6 +4,8 @@ import { createFiberFromElement, createWorkInProgess, FiberNode } from './fiber'
 import { ChildDeletion, Placement } from './fiberFlags';
 import { HostText } from './workTags';
 
+type ExistingChildren = Map<string | number, FiberNode>;
+
 /**
  * 协调子节点
  * @param shouldTrackEffects 是否需要追踪 effect
@@ -139,6 +141,130 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	};
 
 	/**
+	 * 协调多节点
+	 * @param returnFiber 父节点
+	 * @param currentFirstChild 当前子节点
+	 * @param newChild ReactElement 数组
+	 * @returns
+	 */
+	const reconcileChildrenArray = (returnFiber: FiberNode, currentFirstChild: FiberNode | null, newChild: any[]) => {
+		// 最后一个可复用 fiber 在 current 中的位置
+		let lastPlacedIndex = 0;
+		// 创建的最后一个 FiberNode
+		let lastNewFiber: FiberNode | null = null;
+		// 创建的第一个 FiberNode
+		let firstNewFiber: FiberNode | null = null;
+
+		// 1. 将 current 保存在 Map 中
+		const existingChildren: ExistingChildren = new Map();
+		let current = currentFirstChild;
+		// 遍历 currentFirstChild，将所有子节点保存在 Map 中
+		while (current !== null) {
+			// 取出 key，如果 key 不存在，则使用 index 作为 key
+			// key 会作为 Map 的 key，在后续遍历 newChild 时，可以通过 key 快速找到对应的 current
+			const keyToUse = current.key !== null ? current.key : current.index;
+			existingChildren.set(keyToUse, current);
+			// 遍历下一个节点
+			current = current.sibling;
+		}
+
+		for (let i = 0; i < newChild.length; i++) {
+			// 2. 遍历 newChild，寻找可复用的节点
+			const after = newChild[i];
+			const newFiber = updateFromMap(returnFiber, existingChildren, i, after);
+			// 返回的 newFiber 是可复用的节点，接下来要判断是移动还是插入
+			// newFiber 为 null，可能表示当前节点在更新之后是 false 或者 null
+			if (newFiber === null) continue;
+
+			// 3. 判断移动还是插入
+			newFiber.index = i;
+			newFiber.child = returnFiber;
+
+			if (lastNewFiber === null) {
+				firstNewFiber = newFiber;
+				lastNewFiber = newFiber;
+			} else {
+				lastNewFiber.sibling = newFiber;
+				lastNewFiber = lastNewFiber.sibling;
+			}
+
+			if (!shouldTrackEffects) continue;
+
+			const current = newFiber.alternate;
+			if (current !== null) {
+				const oldIndex = current.index;
+				if (oldIndex < lastPlacedIndex) {
+					// 当前节点需要移动
+					newFiber.flags |= Placement;
+					continue;
+				} else {
+					// 当前节点不需要移动，更新 lastPlacedIndex
+					lastPlacedIndex = oldIndex;
+				}
+			} else {
+				// mount
+				newFiber.flags |= Placement;
+			}
+		}
+
+		// 4. 删除 Map 中剩余的节点
+		existingChildren.forEach((fiber) => {
+			deleteChild(returnFiber, fiber);
+		});
+
+		return firstNewFiber;
+	};
+
+	/**
+	 * 判断 existingChildren 中是否存在可复用的节点
+	 * @param returnFiber 父节点
+	 * @param existingChildren existingChildren
+	 * @param index 索引
+	 * @param element ReactElement
+	 * @returns
+	 */
+	const updateFromMap = (
+		returnFiber: FiberNode,
+		existingChildren: ExistingChildren,
+		index: number,
+		element: any
+	): FiberNode | null => {
+		const keyToUse = element.key !== null ? element.key : index;
+		const before = existingChildren.get(keyToUse);
+
+		// HostText
+		if (typeof element === 'string' || typeof element === 'number') {
+			if (before) {
+				if (before.tag === HostText) {
+					// 可复用，删除 existingChildren 中的节点
+					existingChildren.delete(keyToUse);
+					return useFiber(before, { content: element + '' });
+				}
+			}
+			return new FiberNode(HostText, { content: element + '' }, null);
+		}
+
+		// ReactElement
+		if (typeof element === 'object' && element !== null) {
+			switch (element.$$typeof) {
+				case REACT_ELEMENT_TYPE:
+					// before 存在则表示 key 相同
+					if (before) {
+						// type 相同，可复用
+						if (before.type === element.type) {
+							existingChildren.delete(keyToUse);
+							return useFiber(before, element.props);
+						}
+					}
+					// key 不同，tupe 不同，创建新节点
+					return createFiberFromElement(element);
+			}
+		}
+
+		return null;
+	};
+
+	/**
 	 * 协调子节点
 	 * @param returnFiber 父 fiberNode
 	 * @param currentFiber 待比较 子fiberNode
@@ -156,6 +282,10 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 				default:
 					if (__DEV__) console.warn('未实现的 reconcile 类型', newChild);
 					break;
+			}
+			// 多节点情况
+			if (Array.isArray(newChild)) {
+				reconcileChildrenArray(returnFiber, currentFiber, newChild);
 			}
 		}
 
