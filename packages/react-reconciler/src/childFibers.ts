@@ -178,7 +178,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 
 			// 3. 判断移动还是插入
 			newFiber.index = i;
-			newFiber.child = returnFiber;
+			newFiber.return = returnFiber;
 
 			if (lastNewFiber === null) {
 				firstNewFiber = newFiber;
@@ -285,7 +285,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 			}
 			// 多节点情况
 			if (Array.isArray(newChild)) {
-				reconcileChildrenArray(returnFiber, currentFiber, newChild);
+				return reconcileChildrenArray(returnFiber, currentFiber, newChild);
 			}
 		}
 
