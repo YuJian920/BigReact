@@ -2,7 +2,7 @@ import { appendInitialChild, Container, createInstance, createTextInstance } fro
 import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 import { FiberNode } from './fiber';
 import { NoFlags, Update } from './fiberFlags';
-import { HostRoot, HostComponent, HostText, FunctionComponent } from './workTags';
+import { HostRoot, HostComponent, HostText, FunctionComponent, Fragment } from './workTags';
 
 /**
  * 标记 Update
@@ -21,10 +21,6 @@ export const completeWork = (wip: FiberNode) => {
 	const current = wip.alternate;
 
 	switch (wip.tag) {
-		case HostRoot:
-			// HostRoot 的 completeWork 工作流程:
-			bubbleProperties(wip);
-			return null;
 		case HostComponent:
 			if (current !== null && wip.stateNode) {
 				// update 阶段 HostComponent 的 completeWork 工作流程:
@@ -55,7 +51,9 @@ export const completeWork = (wip: FiberNode) => {
 			}
 			bubbleProperties(wip);
 			return null;
+		case HostRoot:
 		case FunctionComponent:
+		case Fragment:
 			bubbleProperties(wip);
 			return null;
 		default:

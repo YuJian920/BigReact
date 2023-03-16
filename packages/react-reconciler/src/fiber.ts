@@ -1,7 +1,7 @@
 import type { Container } from 'hostConfig';
 import type { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
 import { Flags, NoFlags } from './fiberFlags';
-import { FunctionComponent, HostComponent, WorkTag } from './workTags';
+import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags';
 
 export class FiberNode {
 	tag: WorkTag;
@@ -28,7 +28,7 @@ export class FiberNode {
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		// Fiber 节点本身的信息
 		this.tag = tag; // Fiber 的 tag
-		this.key = key;
+		this.key = key || null;
 		this.stateNode = null; // 对于 HostComponent 来说，stateNode 保存的就是其对应的 DOM 元素
 		this.type = null; // 表示 Fiber 节点的类型，用 FunctionComponent 举例，这里存放的就是 FunctionComponent 函数本身
 
@@ -122,5 +122,10 @@ export const createFiberFromElement = (element: ReactElementType): FiberNode => 
 	const fiber = new FiberNode(fiberTag, props, key);
 	fiber.type = type;
 
+	return fiber;
+};
+
+export const createFiberFromFragment = (element: any[], key: Key): FiberNode => {
+	const fiber = new FiberNode(Fragment, element, key);
 	return fiber;
 };

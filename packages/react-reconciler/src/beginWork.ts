@@ -3,7 +3,7 @@ import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
 import { renderWithHooks } from './fiberHooks';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
-import { FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
+import { Fragment, FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
 
 /**
  * 负责 React DFS 当中的递阶段，与 React Element 比较后返回子 Fiber 节点
@@ -27,12 +27,22 @@ export const beginWork = (wip: FiberNode) => {
 			return null;
 		case FunctionComponent:
 			return updateFunctionComponent(wip);
+		case Fragment:
+			return updateFragment(wip);
 		default:
 			if (__DEV__) console.warn('未实现的类型');
 			break;
 	}
 
 	return null;
+};
+
+const updateFragment = (wip: FiberNode) => {
+	// 对于一个 FunctionComponent 而言，child 就是它的执行结果
+	const nextChildren = wip.pendingProps;
+
+	reconcileChildren(wip, nextChildren);
+	return wip.child;
 };
 
 const updateFunctionComponent = (wip: FiberNode) => {
