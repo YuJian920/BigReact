@@ -4,6 +4,7 @@ import { Dispatch, Dispatcher } from 'react/src/currentDispatcher';
 import { createUpdate, createUpdateQueue, enqueueUpdate, processUpdateQueue, UpdateQueue } from './updateQueue';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Action } from 'shared/ReactTypes';
+import { requestUpdateLane } from './fiberLanes';
 
 interface Hook {
 	memoizedState: any;
@@ -29,12 +30,13 @@ let currentHook: Hook | null = null;
  */
 const dispatchSetState = <State>(fiber: FiberNode, updateQueue: UpdateQueue<State>, action: Action<State>) => {
 	// dispatchSetState 函数或者叫 dispatcher 函数已经通过 bind 保存了前两个参数，也就是绑定了 fiber 和 dispatcher
+	const lane = requestUpdateLane();
 	// action 是 setState 传入的待更新的状态，调用 createUpdate 包装成 update 的 action
-	const update = createUpdate(action);
+	const update = createUpdate(action, lane);
 	// 将创建的 action 添加到 updateQueue 中
 	enqueueUpdate(updateQueue, update);
 	// 开始调度
-	scheduleUpdateOnFiber(fiber);
+	scheduleUpdateOnFiber(fiber, lane);
 };
 
 /**

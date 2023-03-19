@@ -3,6 +3,7 @@ import { commitMutationEffects } from './commitWork';
 import { completeWork } from './completeWork';
 import { createWorkInProgess, FiberNode, FiberRootNode } from './fiber';
 import { MutationMask, NoFlags } from './fiberFlags';
+import { Lane, mergeLanes } from './fiberLanes';
 import { HostRoot } from './workTags';
 
 let workInProgress: FiberNode | null = null;
@@ -16,13 +17,23 @@ const prepareFreshStack = (root: FiberRootNode) => {
 	workInProgress = createWorkInProgess(root.current, {});
 };
 
-export const scheduleUpdateOnFiber = (fiber: FiberNode) => {
+export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
 	// 对于 mount 阶段，传入的 fiberNode 是 hostRootFiber
 	// 对于 update 阶段，传入的 fiberNode 是触发更新的 fiberNode
 	// 我们需要从我们当前的 fiberNode 一直遍历到 fiberRootNode
 	const root = markUpdateFromFiberToRoot(fiber);
+	markRootUpdated(root, lane);
 	// 然后从 fiberRootNode 开始更新流程
 	renderRoot(root);
+};
+
+/**
+ * 记录 Lane 到 FiberRootNode
+ * @param root FiberRootNode
+ * @param lane Lane
+ */
+const markRootUpdated = (root: FiberRootNode, lane: Lane) => {
+	root.pendingLanes = mergeLanes(root.pendingLanes, lane);
 };
 
 /**

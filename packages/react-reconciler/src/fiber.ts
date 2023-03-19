@@ -1,6 +1,7 @@
 import type { Container } from 'hostConfig';
 import type { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
 import { Flags, NoFlags } from './fiberFlags';
+import { Lanes, Lane, NoLane, NoLanes } from './fiberLanes';
 import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags';
 
 export class FiberNode {
@@ -56,13 +57,18 @@ export class FiberRootNode {
 	container: Container; // 保存对应宿主环境的挂载节点，也就是 createRoot 传入的参数
 	current: FiberNode; // 指向 hostRootFiber
 	finishedWork: FiberNode | null;
+	pendingLanes: Lanes;
+	finishedLane: Lane;
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
+		this.finishedWork = null;
+		this.pendingLanes = NoLanes;
+		this.finishedLane = NoLane;
+
 		// hostRootFiber 的 stateNode 指向 FiberRootNode
 		hostRootFiber.stateNode = this;
-		this.finishedWork = null;
 	}
 }
 
