@@ -3,6 +3,7 @@ import type { Action } from 'shared/ReactTypes';
 
 export interface Update<State> {
 	action: Action<State>;
+	next: Update<any> | null;
 }
 
 export interface UpdateQueue<State> {
@@ -18,7 +19,7 @@ export interface UpdateQueue<State> {
  * @returns
  */
 export const createUpdate = <State>(action: Action<State>): Update<State> => {
-	return { action };
+	return { action, next: null };
 };
 
 /**
@@ -36,6 +37,21 @@ export const createUpdateQueue = <State>() => {
  * @param update
  */
 export const enqueueUpdate = <State>(updateQueue: UpdateQueue<State>, update: Update<State>) => {
+	const pending = updateQueue.shared.pending;
+	if (pending === null) {
+		// 此时 update.next 指向自己，形成环状链表
+		update.next = update;
+	} else {
+		// b.next = a.next
+		update.next = pending.next;
+		// a.next = b
+		// 如果插入一个 b，那么 b -> a -> b 形成环状链表
+		// 如果再插入一个 c，那么 c -> a -> b -> c 形成环状链表
+		// pending 始终指向最后一个插入的 update
+		// 这里似乎涉及到环装链表的算法，待补充
+		pending.next = update;
+	}
+
 	updateQueue.shared.pending = update;
 };
 
