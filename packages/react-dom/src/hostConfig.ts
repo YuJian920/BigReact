@@ -53,3 +53,13 @@ export const removeChild = (child: Instacne | TextInstacne, container: Container
 export const insertChildToContainer = (child: Instacne, container: Container, before: Instacne) => {
 	container.insertBefore(child, before);
 };
+
+/**
+ * 调度微任务
+ */
+export const scheduleMicroTask =
+	typeof queueMicrotask === 'function'
+		? queueMicrotask
+		: typeof Promise === 'function'
+		? (callback: (...args: any) => void) => Promise.resolve().then(callback)
+		: setTimeout;
