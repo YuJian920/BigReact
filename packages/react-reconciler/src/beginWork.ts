@@ -2,6 +2,7 @@ import type { ReactElementType } from 'shared/ReactTypes';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
 import { renderWithHooks } from './fiberHooks';
+import { Lane } from './fiberLanes';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import { Fragment, FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
 
@@ -10,13 +11,13 @@ import { Fragment, FunctionComponent, HostComponent, HostRoot, HostText } from '
  * @param wip
  * @returns
  */
-export const beginWork = (wip: FiberNode) => {
+export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	switch (wip.tag) {
 		case HostRoot:
 			// HostRoot 的 beginWork 工作流程:
 			// 1. 计算状态最新值
 			// 2. 创造子 FiberNode
-			return updateHostRoot(wip);
+			return updateHostRoot(wip, renderLane);
 		case HostComponent:
 			// HostComponent 与 HostRoot 显著的不同在于 HostComponent 内部不能触发更新
 			// HostComponent 的 beginWork 工作流程:
@@ -26,7 +27,7 @@ export const beginWork = (wip: FiberNode) => {
 			// HostText 不存在子节点，没有 beginWork 工作流程
 			return null;
 		case FunctionComponent:
-			return updateFunctionComponent(wip);
+			return updateFunctionComponent(wip, renderLane);
 		case Fragment:
 			return updateFragment(wip);
 		default:
@@ -45,9 +46,9 @@ const updateFragment = (wip: FiberNode) => {
 	return wip.child;
 };
 
-const updateFunctionComponent = (wip: FiberNode) => {
+const updateFunctionComponent = (wip: FiberNode, renderLane: Lane) => {
 	// 对于一个 FunctionComponent 而言，child 就是它的执行结果
-	const nextChildren = renderWithHooks(wip);
+	const nextChildren = renderWithHooks(wip, renderLane);
 
 	reconcileChildren(wip, nextChildren);
 	return wip.child;
@@ -58,14 +59,14 @@ const updateFunctionComponent = (wip: FiberNode) => {
  * @param wip
  * @returns
  */
-const updateHostRoot = (wip: FiberNode) => {
+const updateHostRoot = (wip: FiberNode, renderLane: Lane) => {
 	const baseState = wip.memoizedState;
 	const updateQueue = wip.updateQueue as UpdateQueue<Element>;
 	// 取出 pending
 	const pending = updateQueue.shared.pending;
 	updateQueue.shared.pending = null;
 	// 计算 memoizedState
-	const { memoizedState } = processUpdateQueue(baseState, pending);
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
 	wip.memoizedState = memoizedState;
 
 	// 在 updateContainer 函数中，为 hostRootFiber 插入的 pending 是 ReactElement

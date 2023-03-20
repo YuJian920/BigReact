@@ -4,19 +4,25 @@ import { commitMutationEffects } from './commitWork';
 import { completeWork } from './completeWork';
 import { createWorkInProgess, FiberNode, FiberRootNode } from './fiber';
 import { MutationMask, NoFlags } from './fiberFlags';
-import { getHighestPriorityLanes, Lane, mergeLanes, NoLane, SyncLane } from './fiberLanes';
+import { getHighestPriorityLanes, Lane, markRootFinished, mergeLanes, NoLane, SyncLane } from './fiberLanes';
 import { flushSyncCallbacks, scheduleSyncCallback } from './syncTaskQueue';
 import { HostRoot } from './workTags';
 
 let workInProgress: FiberNode | null = null;
+// 本次更新的 lane
+let wipRootRenderLanes: Lane = NoLane;
 
 /**
  * 初始化 workInProgress
  * @param fiber
  */
-const prepareFreshStack = (root: FiberRootNode) => {
+const prepareFreshStack = (root: FiberRootNode, lane: Lane) => {
 	// 初始化也可以说是确认 workInProgress 的位置
+	// 传入的 root 是 FiberRootNode，current 指向的是 HostRootFiber
+	// 为 HostRootFiber 创建 wip FiberNode
+	// 所以在 mount 阶段，只有 HostRootFiber 具有 current
 	workInProgress = createWorkInProgess(root.current, {});
+	wipRootRenderLanes = lane;
 };
 
 export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
@@ -78,7 +84,7 @@ const performSyncWorkOnRoot = (root: FiberRootNode, lane: Lane) => {
 		return;
 	}
 
-	prepareFreshStack(root);
+	prepareFreshStack(root, lane);
 
 	do {
 		try {
@@ -92,6 +98,8 @@ const performSyncWorkOnRoot = (root: FiberRootNode, lane: Lane) => {
 
 	const finishedWork = root.current.alternate;
 	root.finishedWork = finishedWork;
+	root.finishedLane = lane;
+	wipRootRenderLanes = NoLane;
 
 	commitRoot(root);
 };
@@ -107,7 +115,13 @@ const commitRoot = (root: FiberRootNode) => {
 	if (finishedWork === null) return;
 	if (__DEV__) console.warn('commit 阶段开始', finishedWork);
 
+	const lane = root.finishedLane;
+	if (lane === NoLane) console.error('commit 阶段的 lane 为 NoLane');
+
 	root.finishedWork = null;
+	root.finishedLane = NoLane;
+
+	markRootFinished(root, lane);
 
 	// 判断是否存在3个子阶段需要执行的操作
 	const subtreeHasEffect = (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
@@ -141,7 +155,7 @@ const workLoop = () => {
  */
 const performUnitOfWork = (fiber: FiberNode) => {
 	// next 有两种情况：返回子 Fiber 节点和 null，null 则表示当前 Fiber 节点不存在子 Fiber 节点
-	const next = beginWork(fiber);
+	const next = beginWork(fiber, wipRootRenderLanes);
 	fiber.memoizedProps = fiber.pendingProps;
 
 	if (next === null) {

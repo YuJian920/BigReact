@@ -17,9 +17,15 @@ function Child() {
 	const [num, setNum] = useState(0);
 
 	return (
-		<div onClick={() => setNum(num + 1)}>
+		<div
+			onClick={() => {
+				setNum((num) => num + 1);
+				setNum((num) => num + 1);
+				setNum((num) => num + 1);
+			}}
+		>
 			<span>big-react</span>
-			{num > 3 ? <div>mini-vue</div> : <span>mini-soild</span>}
+			{num >= 3 ? <div>mini-vue</div> : <span>mini-soild</span>}
 		</div>
 	);
 }
@@ -37,4 +43,4 @@ function NewTest() {
 	);
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<NewTest />);
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<Child />);

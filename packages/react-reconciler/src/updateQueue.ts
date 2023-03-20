@@ -65,19 +65,35 @@ export const enqueueUpdate = <State>(updateQueue: UpdateQueue<State>, update: Up
  */
 export const processUpdateQueue = <State>(
 	baseState: State,
-	pendingUpdate: Update<State> | null
+	pendingUpdate: Update<State> | null,
+	renderLane: Lane
 ): { memoizedState: State } => {
 	// 设置 memoizedState 的初始值
 	const result: ReturnType<typeof processUpdateQueue<State>> = { memoizedState: baseState };
 
 	if (pendingUpdate !== null) {
-		// action 有两种情况，一种是具体值，一种是函数
-		const action = pendingUpdate.action;
-		// 函数会被传入 baseState 后执行，返回值赋值给 memoizedState
-		if (action instanceof Function) result.memoizedState = action(baseState);
-		// 具体值会直接赋值给 memoizedState
-		else result.memoizedState = action;
+		// 第一个 update
+		const first = pendingUpdate.next;
+		// 当前处理的 update
+		let pending = pendingUpdate.next as Update<any>;
+		do {
+			// 获取当前 update 的 lane
+			const updateLane = pending.lane;
+			if (updateLane === renderLane) {
+				// action 有两种情况，一种是具体值，一种是函数
+				const action = pending.action;
+				// 函数会被传入 baseState 后执行，返回值赋值给 memoizedState
+				if (action instanceof Function) baseState = action(baseState);
+				// 具体值会直接赋值给 memoizedState
+				else baseState = action;
+			} else {
+				if (__DEV__) console.error('processUpdateQueue: updateLane !== renderLane');
+			}
+
+			pending = pending.next as Update<any>;
+		} while (pending !== first);
 	}
 
+	result.memoizedState = baseState;
 	return result;
 };

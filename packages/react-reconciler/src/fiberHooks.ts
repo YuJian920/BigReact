@@ -4,7 +4,7 @@ import { Dispatch, Dispatcher } from 'react/src/currentDispatcher';
 import { createUpdate, createUpdateQueue, enqueueUpdate, processUpdateQueue, UpdateQueue } from './updateQueue';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Action } from 'shared/ReactTypes';
-import { requestUpdateLane } from './fiberLanes';
+import { Lane, NoLane, requestUpdateLane } from './fiberLanes';
 
 interface Hook {
 	memoizedState: any;
@@ -21,6 +21,7 @@ let currentlyRenderingFiber: FiberNode | null = null;
 let workInProgressHook: Hook | null = null;
 // 指针 —— 指向当前调用的 current hook
 let currentHook: Hook | null = null;
+let renderLane: Lane = NoLane;
 
 /**
  * dispatch 核心函数，插入 update 并开始协调
@@ -163,7 +164,7 @@ const updateState = <State>(): [State, Dispatch<State>] => {
 	const pending = queue.shared.pending;
 
 	if (pending !== null) {
-		const { memoizedState } = processUpdateQueue(hook.memoizedState, pending);
+		const { memoizedState } = processUpdateQueue(hook.memoizedState, pending, renderLane);
 		hook.memoizedState = memoizedState;
 	}
 
@@ -184,10 +185,11 @@ const HooksDispatcherOnUpdate: Dispatcher = {
  * @param wip WorkInProgress FiberNode
  * @returns
  */
-export const renderWithHooks = (wip: FiberNode) => {
+export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 	currentlyRenderingFiber = wip;
 	// 重置 hooks 链表
 	wip.memoizedState = null;
+	renderLane = lane;
 
 	const current = wip.alternate;
 
@@ -210,5 +212,6 @@ export const renderWithHooks = (wip: FiberNode) => {
 	currentlyRenderingFiber = null;
 	workInProgressHook = null;
 	currentHook = null;
+	renderLane = NoLane;
 	return children;
 };
