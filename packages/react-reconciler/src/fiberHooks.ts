@@ -5,11 +5,28 @@ import { createUpdate, createUpdateQueue, enqueueUpdate, processUpdateQueue, Upd
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Action } from 'shared/ReactTypes';
 import { Lane, NoLane, requestUpdateLane } from './fiberLanes';
+import { Flags, PassiveMask } from './fiberFlags';
+import { HookHasEffect, Passive } from './hookEffectTags';
 
 interface Hook {
 	memoizedState: any;
 	updateQueue: unknown;
 	next: Hook | null;
+}
+
+export interface Effect {
+	tag: Flags;
+	create: EffectCallback | void;
+	destroy: EffectCallback | void;
+	deps: EffectDeps | null;
+	next: Effect | null;
+}
+
+type EffectCallback = () => void;
+type EffectDeps = any[];
+
+export interface FCUpdateQueue<State> extends UpdateQueue<State> {
+	lastEffect: Effect | null;
 }
 
 // 从数据共享层获取 currentDispatcher
@@ -145,7 +162,7 @@ const mountState = <State>(initialState: () => State | State): [State, Dispatch<
 
 	// @ts-ignore
 	// dispatchSetState 使用 bind 是为了隐藏多余参数以及使 dispatch 函数能脱离 FunctionComponent 环境
-	// dispatch 以及保存了 currentlyRenderingFiber 和 queue
+	// dispatch 以及保存了 currentlyRenderingFiber 和 Hook 链表的 updateQueue
 	const dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue);
 	queue.dispatch = dispatch;
 
@@ -162,6 +179,7 @@ const updateState = <State>(): [State, Dispatch<State>] => {
 
 	const queue = hook.updateQueue as UpdateQueue<State>;
 	const pending = queue.shared.pending;
+	queue.shared.pending = null;
 
 	if (pending !== null) {
 		const { memoizedState } = processUpdateQueue(hook.memoizedState, pending, renderLane);
@@ -171,9 +189,73 @@ const updateState = <State>(): [State, Dispatch<State>] => {
 	return [hook.memoizedState, queue.dispatch as Dispatch<State>];
 };
 
+/**
+ * mount 阶段 useEffect
+ * @param create 传入的 effect 函数
+ * @param deps 依赖数组
+ */
+const mountEffect = (create: EffectCallback | void, deps: EffectDeps | void) => {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	(currentlyRenderingFiber as FiberNode).flags |= PassiveMask;
+
+	hook.memoizedState = pushEffect(Passive | HookHasEffect, create, undefined, nextDeps);
+};
+
+/**
+ * 创建 effect
+ * @param hookFlags effectTag
+ * @param create effect 函数
+ * @param destroy	清除 effect 函数
+ * @param deps 依赖数组
+ * @returns
+ */
+const pushEffect = (
+	hookFlags: Flags,
+	create: EffectCallback | void,
+	destroy: EffectCallback | void,
+	deps: EffectDeps | null
+): Effect => {
+	const effect: Effect = { tag: hookFlags, create, destroy, deps, next: null };
+	const fiber = currentlyRenderingFiber as FiberNode;
+	const updateQueue = fiber.updateQueue as FCUpdateQueue<any>;
+
+	// 一般来说，Function FiberNode 的 updateQueue 都是 null
+	// 遇到 useEffect 开始执行，才会在 mountEffect 创建一个 updateQueue
+	if (updateQueue === null) {
+		const updateQueue = createFCUpdateQueue<any>();
+		fiber.updateQueue = updateQueue;
+		// 循环链表
+		effect.next = effect;
+		updateQueue.lastEffect = effect;
+	} else {
+		// updateQueue 不为 null，说明已经执行过 useEffect
+		const lastEffect = updateQueue.lastEffect;
+		// 什么情况下会出现 lastEffect 为 null 的情况？
+		if (lastEffect === null) {
+			effect.next = effect;
+			updateQueue.lastEffect = effect;
+		} else {
+			const firstEffect = lastEffect.next;
+			lastEffect.next = effect;
+			effect.next = firstEffect;
+			updateQueue.lastEffect = effect;
+		}
+	}
+
+	return effect;
+};
+
+const createFCUpdateQueue = <State>() => {
+	const updateQueue = createUpdateQueue<State>() as FCUpdateQueue<State>;
+	updateQueue.lastEffect = null;
+	return updateQueue;
+};
+
 // mount 阶段 Hook 集合
 const HooksDispatcherOnMount: Dispatcher = {
-	useState: mountState
+	useState: mountState,
+	useEffect: mountEffect
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {

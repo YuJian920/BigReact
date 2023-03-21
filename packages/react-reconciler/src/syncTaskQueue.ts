@@ -15,6 +15,7 @@ export const flushSyncCallbacks = () => {
 			if (__DEV__) console.warn('flushSyncCallbacks 发生错误', error);
 		} finally {
 			isFlushingSyncQueue = false;
+			syncQueue = null;
 		}
 	}
 };

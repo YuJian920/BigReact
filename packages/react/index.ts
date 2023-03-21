@@ -8,6 +8,11 @@ export const useState: Dispatcher['useState'] = (initialState) => {
 	return dispatcher.useState(initialState);
 };
 
+export const useEffect: Dispatcher['useEffect'] = (create, deps) => {
+	const dispatcher = resolveDispatcher();
+	return dispatcher.useEffect(create, deps);
+};
+
 // 数据共享层，和 ReactDOM 共享数据
 export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 	currentDispatcher
