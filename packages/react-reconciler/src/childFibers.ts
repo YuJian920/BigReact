@@ -1,6 +1,11 @@
 import { REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE } from 'shared/ReactSymbols';
 import { Key, Props, ReactElementType } from 'shared/ReactTypes';
-import { createFiberFromElement, createFiberFromFragment, createWorkInProgess, FiberNode } from './fiber';
+import {
+	createFiberFromElement,
+	createFiberFromFragment,
+	createWorkInProgess,
+	FiberNode
+} from './fiber';
 import { ChildDeletion, Placement } from './fiberFlags';
 import { Fragment, HostText } from './workTags';
 
@@ -156,7 +161,11 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 * @param newChild ReactElement 数组
 	 * @returns
 	 */
-	const reconcileChildrenArray = (returnFiber: FiberNode, currentFirstChild: FiberNode | null, newChild: any[]) => {
+	const reconcileChildrenArray = (
+		returnFiber: FiberNode,
+		currentFirstChild: FiberNode | null,
+		newChild: any[]
+	) => {
 		// 最后一个可复用 fiber 在 current 中的位置
 		let lastPlacedIndex = 0;
 		// 创建的最后一个 FiberNode
@@ -289,7 +298,11 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 * @param currentFiber 待比较 子fiberNode
 	 * @param newChild 待比较 子ReactElement
 	 */
-	const reconcileChildFibers = (returnFiber: FiberNode, currentFiber: FiberNode | null, newChild?: any) => {
+	const reconcileChildFibers = (
+		returnFiber: FiberNode,
+		currentFiber: FiberNode | null,
+		newChild?: any
+	) => {
 		const isUnkeyedTopLevelFragment =
 			typeof newChild === 'object' &&
 			newChild !== null &&

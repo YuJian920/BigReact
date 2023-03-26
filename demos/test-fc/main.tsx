@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 
 // function App() {
@@ -13,7 +12,32 @@ import ReactDOM from 'react-dom/client';
 // 	return <ul onClickCapture={() => setNum(num + 1)}>{arr}</ul>;
 // }
 
+function App() {
+	const [num, updateNum] = useState(0);
+	useEffect(() => {
+		console.log('App mount');
+	}, []);
+
+	useEffect(() => {
+		console.log('num change create', num);
+		return () => {
+			console.log('num change destroy', num);
+		};
+	}, [num]);
+
+	return <div onClick={() => updateNum(num + 1)}>{num === 0 ? <Child /> : 'noop'}</div>;
+}
+
 function Child() {
+	useEffect(() => {
+		console.log('Child mount');
+		return () => console.log('Child unmount');
+	}, []);
+
+	return 'i am child';
+}
+
+function Child2() {
 	const [num, setNum] = useState(0);
 
 	return (
@@ -43,4 +67,4 @@ function NewTest() {
 	);
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<Child />);
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);

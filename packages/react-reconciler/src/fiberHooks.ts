@@ -1,7 +1,13 @@
 import { FiberNode } from './fiber';
 import internals from 'shared/internals';
 import { Dispatch, Dispatcher } from 'react/src/currentDispatcher';
-import { createUpdate, createUpdateQueue, enqueueUpdate, processUpdateQueue, UpdateQueue } from './updateQueue';
+import {
+	createUpdate,
+	createUpdateQueue,
+	enqueueUpdate,
+	processUpdateQueue,
+	UpdateQueue
+} from './updateQueue';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Action } from 'shared/ReactTypes';
 import { Lane, NoLane, requestUpdateLane } from './fiberLanes';
@@ -46,7 +52,11 @@ let renderLane: Lane = NoLane;
  * @param updateQueue
  * @param action
  */
-const dispatchSetState = <State>(fiber: FiberNode, updateQueue: UpdateQueue<State>, action: Action<State>) => {
+const dispatchSetState = <State>(
+	fiber: FiberNode,
+	updateQueue: UpdateQueue<State>,
+	action: Action<State>
+) => {
 	// dispatchSetState 函数或者叫 dispatcher 函数已经通过 bind 保存了前两个参数，也就是绑定了 fiber 和 dispatcher
 	const lane = requestUpdateLane();
 	// action 是 setState 传入的待更新的状态，调用 createUpdate 包装成 update 的 action
@@ -202,6 +212,39 @@ const mountEffect = (create: EffectCallback | void, deps: EffectDeps | void) => 
 	hook.memoizedState = pushEffect(Passive | HookHasEffect, create, undefined, nextDeps);
 };
 
+const updateEffect = (create: EffectCallback | void, deps: EffectDeps | void) => {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	let destroy: EffectCallback | void;
+
+	if (currentHook !== null) {
+		const preEffect = currentHook.memoizedState as Effect;
+		destroy = preEffect.destroy;
+
+		if (nextDeps !== null) {
+			const prevDeps = preEffect.deps;
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				hook.memoizedState = pushEffect(Passive, create, destroy, nextDeps);
+				return;
+			}
+		}
+
+		(currentlyRenderingFiber as FiberNode).flags |= PassiveMask;
+		hook.memoizedState = pushEffect(Passive | HookHasEffect, create, destroy, nextDeps);
+	}
+};
+
+const areHookInputsEqual = (nextDeps: EffectDeps, prevDeps: EffectDeps): boolean => {
+	if (prevDeps === null || nextDeps === null) return false;
+
+	for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+		if (Object.is(prevDeps[i], nextDeps[i])) continue;
+		return false;
+	}
+
+	return true;
+};
+
 /**
  * 创建 effect
  * @param hookFlags effectTag
@@ -259,7 +302,8 @@ const HooksDispatcherOnMount: Dispatcher = {
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
-	useState: updateState
+	useState: updateState,
+	useEffect: updateEffect
 };
 
 /**
@@ -271,6 +315,7 @@ export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 	currentlyRenderingFiber = wip;
 	// 重置 hooks 链表
 	wip.memoizedState = null;
+	wip.updateQueue = null;
 	renderLane = lane;
 
 	const current = wip.alternate;
