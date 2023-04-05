@@ -23,6 +23,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 * @returns
 	 */
 	const deleteChild = (returnFiber: FiberNode, childToDelete: FiberNode) => {
+		// mount 阶段会被返回
 		if (!shouldTrackEffects) return;
 
 		// 取出删除节点列表
@@ -99,11 +100,14 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 			}
 		}
 
+		// mount 阶段直接进入这里，没有上面的复用逻辑
 		// 创建子元素的 FiberNode
 		let fiber;
 		if (element.type === REACT_FRAGMENT_TYPE) {
+			// Fragment
 			fiber = createFiberFromFragment(element.props.children, key);
 		} else {
+			// 其他
 			fiber = createFiberFromElement(element);
 		}
 		fiber.return = returnFiber;
@@ -149,7 +153,9 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 	 */
 	const placeSingleChild = (fiber: FiberNode) => {
 		// mount 阶段且 shouldTrackEffects 为 true
-		// 这种情况下，只有 hostRootFiber 的子 Fiber 满足这个条件
+		// 这种情况下，只有 hostRootFiber 的子 FiberNode 满足这个条件
+		// 也就是说标记会被打在 hostRootFiber 的子 FiberNode 上
+		// HostRootFiber 的 subtreeFlags 会被冒泡标记有 effect
 		if (shouldTrackEffects && fiber.alternate === null) fiber.flags |= Placement;
 		return fiber;
 	};
@@ -199,17 +205,21 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 			newFiber.return = returnFiber;
 
 			if (lastNewFiber === null) {
+				// 初始化指针
 				firstNewFiber = newFiber;
 				lastNewFiber = newFiber;
 			} else {
+				// 兄弟节点遍历
 				lastNewFiber.sibling = newFiber;
 				lastNewFiber = lastNewFiber.sibling;
 			}
 
+			// mount 阶段不追踪副作用
 			if (!shouldTrackEffects) continue;
 
 			const current = newFiber.alternate;
 			if (current !== null) {
+				// update
 				const oldIndex = current.index;
 				if (oldIndex < lastPlacedIndex) {
 					// 当前节点需要移动
@@ -247,7 +257,9 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 		index: number,
 		element: any
 	): FiberNode | null => {
+		// 获取 element 的 Key，没有则使用 index
 		const keyToUse = element.key !== null ? element.key : index;
+		// 根据 Key 从 existingChildren 获取对应的 current 节点
 		const before = existingChildren.get(keyToUse);
 
 		// HostText
@@ -274,6 +286,8 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 						// type 相同，可复用
 						if (before.type === element.type) {
 							existingChildren.delete(keyToUse);
+							// 复用 Fiber 节点
+							// 根据传入的 current FiberNode clone workInProgress
 							return useFiber(before, element.props);
 						}
 					}
@@ -303,12 +317,14 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 		currentFiber: FiberNode | null,
 		newChild?: any
 	) => {
+		// 判断子 element 是否是 Fragment
 		const isUnkeyedTopLevelFragment =
 			typeof newChild === 'object' &&
 			newChild !== null &&
 			newChild.type === REACT_FRAGMENT_TYPE &&
 			newChild.key === null;
 
+		// 对 Fragment 的处理：将它的 children 拆出来
 		if (isUnkeyedTopLevelFragment) newChild = newChild.props.children;
 
 		if (typeof newChild === 'object' && newChild !== null) {
@@ -319,6 +335,7 @@ const ChildReconciler = (shouldTrackEffects: boolean) => {
 
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE:
+					// 进入单一节点逻辑，并打上 Placement 标记
 					return placeSingleChild(reconcileSingleElement(returnFiber, currentFiber, newChild));
 				default:
 					if (__DEV__) console.warn('未实现的 reconcile 类型', newChild);

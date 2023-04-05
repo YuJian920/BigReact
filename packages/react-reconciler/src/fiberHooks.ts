@@ -11,7 +11,7 @@ import {
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Action } from 'shared/ReactTypes';
 import { Lane, NoLane, requestUpdateLane } from './fiberLanes';
-import { Flags, PassiveMask } from './fiberFlags';
+import { Flags, PassiveEffect } from './fiberFlags';
 import { HookHasEffect, Passive } from './hookEffectTags';
 
 interface Hook {
@@ -78,10 +78,13 @@ const mountWorkInProgressHook = (): Hook => {
 		next: null
 	};
 
+	// workInProgressHook 是一个指向当前正在渲染的 FiberNode 的指针, 它在 renderWithHooks 函数中被赋值
+	// 它为 null 表示当前并没有函数类型 FiberNode 被渲染，也就是函数组件之外调用 Hook
 	if (workInProgressHook === null) {
 		// mount 阶段，第一个 hook 调用
 		if (currentlyRenderingFiber === null) throw new Error('hook 只能在函数组件中调用');
 		else {
+			// workInProgressHook 是指向当前 Hook 链表节点的指针
 			// 指向创建的 hook
 			workInProgressHook = hook;
 			// WorkInProgress FiberNode 赋值第一个 hook 链表节点
@@ -129,18 +132,20 @@ const updateWorkInProgressHook = (): Hook => {
 		next: null
 	};
 
+	// workInProgressHook 指向当前的 hook 链表节点，它的有值与否取决于当前执行的是不是第一个 hook
 	if (workInProgressHook === null) {
 		if (currentlyRenderingFiber === null) throw new Error('hook 只能在函数组件中调用');
 		else {
-			// 指向创建的 hook
+			// 执行第一个 hook 调用的逻辑：就是将当前新创建的 hook 赋值给 workInProgressHook
 			workInProgressHook = newHook;
-			// WorkInProgress FiberNode 赋值第一个 hook 链表节点
+			// currentlyRenderingFiber 表示当前正在渲染的 FiberNode
+			// 再将 currentlyRenderingFiber 的 memoizedState 指向这个新创建的 hook
 			currentlyRenderingFiber.memoizedState = workInProgressHook;
 		}
 	} else {
-		// hook 链表新增节点
+		// 执行不是第一个 hook 调用的逻辑：将当前之前创建的 hook 链表节点的 next 赋值为新创建的 hook
 		workInProgressHook.next = newHook;
-		// 指向新节点
+		// 保持 workInProgressHook 的指向
 		workInProgressHook = workInProgressHook.next;
 	}
 
@@ -207,37 +212,60 @@ const updateState = <State>(): [State, Dispatch<State>] => {
 const mountEffect = (create: EffectCallback | void, deps: EffectDeps | void) => {
 	const hook = mountWorkInProgressHook();
 	const nextDeps = deps === undefined ? null : deps;
-	(currentlyRenderingFiber as FiberNode).flags |= PassiveMask;
+	// 给当前渲染 Fiber 打上 PassiveEffect 标记
+	(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
 
+	// hook mount 阶段 useEffect 都需要被执行，所以 tag 会是 Passive | HookHasEffect
 	hook.memoizedState = pushEffect(Passive | HookHasEffect, create, undefined, nextDeps);
 };
 
+/**
+ * update 阶段 useEffect
+ * @param create 传入的 effect 函数
+ * @param deps 依赖数组
+ */
 const updateEffect = (create: EffectCallback | void, deps: EffectDeps | void) => {
 	const hook = updateWorkInProgressHook();
 	const nextDeps = deps === undefined ? null : deps;
 	let destroy: EffectCallback | void;
 
+	// currentHook 指向当前调用的 current hook
 	if (currentHook !== null) {
+		// 取出上一次的 effect
 		const preEffect = currentHook.memoizedState as Effect;
 		destroy = preEffect.destroy;
 
+		// 判断是否存在依赖数组
 		if (nextDeps !== null) {
+			// 存在依赖数组，判断依赖数组是否有变化
 			const prevDeps = preEffect.deps;
 			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				// 依赖数组没有变化，不需要执行 effect
+				// effect 的 tag 为 Passive
 				hook.memoizedState = pushEffect(Passive, create, destroy, nextDeps);
 				return;
 			}
 		}
 
-		(currentlyRenderingFiber as FiberNode).flags |= PassiveMask;
+		// 依赖数组有变化，或者没有依赖数组，都需要执行 effect 也就是标记 PassiveEffect
+		(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
+		// effect 的 tag 为 Passive | HookHasEffect
 		hook.memoizedState = pushEffect(Passive | HookHasEffect, create, destroy, nextDeps);
 	}
 };
 
-const areHookInputsEqual = (nextDeps: EffectDeps, prevDeps: EffectDeps): boolean => {
+/**
+ * 判断依赖数组是否有变化
+ * @param nextDeps
+ * @param prevDeps
+ * @returns
+ */
+const areHookInputsEqual = (nextDeps: EffectDeps | null, prevDeps: EffectDeps | null): boolean => {
 	if (prevDeps === null || nextDeps === null) return false;
 
 	for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+		// 如果 useEffect 的依赖数组传入的是空数组，在这里传递给 Object.is 的参数都会是 undefined
+		// 而 undefined === undefined 为 true
 		if (Object.is(prevDeps[i], nextDeps[i])) continue;
 		return false;
 	}
@@ -259,6 +287,7 @@ const pushEffect = (
 	destroy: EffectCallback | void,
 	deps: EffectDeps | null
 ): Effect => {
+	// 根据传入的参数创建 effect
 	const effect: Effect = { tag: hookFlags, create, destroy, deps, next: null };
 	const fiber = currentlyRenderingFiber as FiberNode;
 	const updateQueue = fiber.updateQueue as FCUpdateQueue<any>;
@@ -279,9 +308,13 @@ const pushEffect = (
 			effect.next = effect;
 			updateQueue.lastEffect = effect;
 		} else {
+			// lastEffect.next 指向第一个 effect
 			const firstEffect = lastEffect.next;
+			// 执行新的 effect 保证 lastEffect.next 指向最后一个 effect
 			lastEffect.next = effect;
+			// 新的 effect 指向第一个 effect
 			effect.next = firstEffect;
+			// 更新 lastEffect
 			updateQueue.lastEffect = effect;
 		}
 	}
@@ -289,8 +322,15 @@ const pushEffect = (
 	return effect;
 };
 
+/**
+ * 创建 FCUpdateQueue
+ * @returns
+ */
 const createFCUpdateQueue = <State>() => {
+	// 这个函数实际上就是创建了一个额外具有 lastEffect 属性的 updateQueue
 	const updateQueue = createUpdateQueue<State>() as FCUpdateQueue<State>;
+	// FCUpdateQueue 是循环链表的结构，它的 lastEffect 属性指向最后一个 effect
+	// updateQueue 只会用来存储 effect 数据结构吗？
 	updateQueue.lastEffect = null;
 	return updateQueue;
 };

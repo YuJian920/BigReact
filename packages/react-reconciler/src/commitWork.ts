@@ -42,6 +42,7 @@ export const commitMutationEffects = (finishedWork: FiberNode, root: FiberRootNo
 			// 子树中不存在 MutationMask 或者子树为 null
 			// 有几种情况：1. 遍历到叶子节点 2. 节点本身存在 MutationMask 3.节点的兄弟节点存在 MutationMask
 			// 开始往上以及往兄弟节点开始遍历
+			// 在 mount 阶段，进入到这里的会是 HostRootFiber 的第一个子 FiberNode，被执行后续逻辑
 			up: while (nextEffect !== null) {
 				commitMutationEffectsOnFiber(nextEffect, root);
 				const sibling: FiberNode | null = nextEffect.sibling;
@@ -54,6 +55,7 @@ export const commitMutationEffects = (finishedWork: FiberNode, root: FiberRootNo
 				}
 
 				// 开始向上遍历
+				// 也就是说如果子节点存在 effect 那么会从那个子节点开始一路向上遍历处理 effect
 				nextEffect = nextEffect.return;
 			}
 		}
@@ -62,7 +64,7 @@ export const commitMutationEffects = (finishedWork: FiberNode, root: FiberRootNo
 
 /**
  * 处理 flags 标记
- * @param finishedWork
+ * @param finishedWork 当前节点
  */
 const commitMutationEffectsOnFiber = (finishedWork: FiberNode, root: FiberRootNode) => {
 	const flags = finishedWork.flags;
@@ -87,17 +89,31 @@ const commitMutationEffectsOnFiber = (finishedWork: FiberNode, root: FiberRootNo
 		}
 		finishedWork.flags &= ~ChildDeletion;
 	}
+	// PassiveEffect
 	if ((flags & PassiveEffect) !== NoFlags) {
+		// PassiveEffect 标记在 mountEffect 或者 updateEffect 中被设置
+		// mountEffect 阶段标记 PassiveEffect 是因为 useEffect 会被初始化执行一次
+		// updateEffect 阶段标记 PassiveEffect 是因为 useEffect 的依赖数据发生变化，需要重新执行
+		// 这里传入的 type 是 update 是因为 update 对应的是 useEffect 的 update 阶段
+		// 如果当前 useEffect 需要处理 unmount 阶段，则表示 FiberNode 将会被移除，会在处理 ChildDeletion 标记的时候被处理
 		commitPassiveEffect(finishedWork, root, 'update');
 		finishedWork.flags &= ~PassiveEffect;
 	}
 };
 
+/**
+ * 处理 PassiveEffect 标记
+ * @param fiber 当前 fiber
+ * @param root fiberRoot
+ * @param type update | unmount
+ * @returns
+ */
 const commitPassiveEffect = (
 	fiber: FiberNode,
 	root: FiberRootNode,
 	type: keyof PendingPassiveEffects
 ) => {
+	// 如果当前 fiber 不是 FunctionComponent 或者 type 等于 update 的同时当前 fiber 不存在 PassiveEffect 标记，直接返回
 	if (
 		fiber.tag !== FunctionComponent ||
 		(type === 'update' && (fiber.flags & PassiveEffect) === NoFlags)
@@ -110,6 +126,9 @@ const commitPassiveEffect = (
 		if (updateQueue.lastEffect === null && __DEV__) {
 			console.warn('当 FC 存在 PassiveEffect flag 时，不应该不存在 lastEffect', fiber);
 		}
+		// 获取 fiberNode 中的 updateQueue 添加到 fiberRootNode 的 pendingPassiveEffects 属性上
+		// 从这里可以知道 React 会执行子节点的 useEffect 之后再执行父节点的 useEffect
+		// 因为 push 的顺序是先子节点再到父节点
 		root.pendingPassiveEffects[type].push(updateQueue.lastEffect as Effect);
 	}
 };
@@ -119,35 +138,68 @@ const commitHookEffectList = (
 	lastEffect: Effect,
 	callback: (effect: Effect) => void
 ) => {
+	// lastEffect 的 next 指向第一个 effect
 	let effect = lastEffect.next as Effect;
+	// 遍历所有 effect
 	do {
 		if ((effect.tag & flags) === flags) callback(effect);
 		effect = effect.next as Effect;
 	} while (effect !== lastEffect.next);
 };
 
+/**
+ * 处理 useEffect 的 unmount
+ * @param flags
+ * @param lastEffect
+ */
 export const commitHookEffectListUnmount = (flags: Flags, lastEffect: Effect) => {
+	// 这个函数主要是处理 FunctionComponent 卸载时的 useEffect
+	// 卸载时需要执行其 destroy 函数
 	commitHookEffectList(flags, lastEffect, (effect) => {
 		const destroy = effect.destroy;
 		if (typeof destroy === 'function') destroy();
+		// 和 commitHookEffectListDestroy 的区别在于这里会将 effect.tag 的 HookHasEffect 标记移除
+		// 确保 useEffect 不会执行后续的 create 和 destroy
 		effect.tag &= ~HookHasEffect;
 	});
 };
 
+/**
+ * 处理 useEffect 的 destroy
+ * @param flags
+ * @param lastEffect
+ */
 export const commitHookEffectListDestroy = (flags: Flags, lastEffect: Effect) => {
+	// 这个函数主要是处理 useEffect 的 destroy，也就是 useEffect 的 return 函数
+	// commitHookEffectListDestroy 会在 commitHookEffectListCreate 前被执行
+	// 因为每一次 useEffect 都会先执行 destroy 再执行 create
 	commitHookEffectList(flags, lastEffect, (effect) => {
 		const destroy = effect.destroy;
+		// 当 destroy 不为函数时，可能表示 useEffect 还未被执行过，destroy 还未被赋值
 		if (typeof destroy === 'function') destroy();
 	});
 };
 
+/**
+ * 处理 useEffect 的 create
+ * @param flags
+ * @param lastEffect
+ */
 export const commitHookEffectListCreate = (flags: Flags, lastEffect: Effect) => {
+	// 这个函数主要是处理 useEffect 的 destroy，也就是 useEffect 的 return 函数
+	// 这个函数执行后会得到 destroy 函数，也就是 useEffect 的 return 函数
+	// destroy 函数会被赋值到 effect.destroy 上
 	commitHookEffectList(flags, lastEffect, (effect) => {
 		const create = effect.create;
 		if (typeof create === 'function') effect.destroy = create();
 	});
 };
 
+/**
+ * 处理 Host 类型的子节点删除
+ * @param childrenToDelete
+ * @param unmountFiber
+ */
 const recordHostChildrenToDelete = (childrenToDelete: FiberNode[], unmountFiber: FiberNode) => {
 	const lastOne = childrenToDelete[childrenToDelete.length - 1];
 

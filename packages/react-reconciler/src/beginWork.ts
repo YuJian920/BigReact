@@ -38,14 +38,24 @@ export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	return null;
 };
 
+/**
+ * Fragment 的 beginWork 流程
+ * @param wip FiberNode
+ * @returns
+ */
 const updateFragment = (wip: FiberNode) => {
-	// 对于一个 FunctionComponent 而言，child 就是它的执行结果
 	const nextChildren = wip.pendingProps;
 
 	reconcileChildren(wip, nextChildren);
 	return wip.child;
 };
 
+/**
+ * FunctionComponent 的 beginWork 流程
+ * @param wip FiberNode
+ * @param renderLane Lane
+ * @returns
+ */
 const updateFunctionComponent = (wip: FiberNode, renderLane: Lane) => {
 	// 对于一个 FunctionComponent 而言，child 就是它的执行结果
 	const nextChildren = renderWithHooks(wip, renderLane);
@@ -56,28 +66,37 @@ const updateFunctionComponent = (wip: FiberNode, renderLane: Lane) => {
 
 /**
  * HostRoot 的 beginWork 流程
- * @param wip
+ * @param wip FiberNode
  * @returns
  */
 const updateHostRoot = (wip: FiberNode, renderLane: Lane) => {
 	const baseState = wip.memoizedState;
 	const updateQueue = wip.updateQueue as UpdateQueue<Element>;
-	// 取出 pending
+	// mount 阶段 pending 中存放的是在 updateContainer 函数中插入的 ReactElement
+	// update 阶段更新不从 updateContainer 函数中发起，所以 pending 会为 null
+	// 但是 update 阶段 wip 的 memoizedState 会有值
+	// 来自 createWorkInProgess 函数中从 current 复制的 memoizedState
 	const pending = updateQueue.shared.pending;
 	updateQueue.shared.pending = null;
 	// 计算 memoizedState
 	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
 	wip.memoizedState = memoizedState;
 
-	// 在 updateContainer 函数中，为 hostRootFiber 插入的 pending 是 ReactElement
 	// 计算完成的 memoizedState 也是 ReactElement
-	// update 中 wip 的 memoizedState 来自 current 在 createWorkInProgess 中复制
 	const nextChildren = wip.memoizedState;
+	// 交由 reconcileChildren 开始生成子 Fiber 节点
 	reconcileChildren(wip, nextChildren);
 	return wip.child;
 };
 
+/**
+ * HostComponent 的 beginWork 流程
+ * @param wip FiberNode
+ * @returns
+ */
 const updateHostComponent = (wip: FiberNode) => {
+	// Host 类型的 FiberNode children 存放在 props 中
+	// 在 JSX 转换时被放入 props 的 children 中
 	const nextProps = wip.pendingProps;
 	const nextChildren = nextProps.children;
 	reconcileChildren(wip, nextChildren);
@@ -86,11 +105,10 @@ const updateHostComponent = (wip: FiberNode) => {
 
 /**
  * 协调 children
- * @param wip
- * @param children
+ * @param wip FiberNode
+ * @param children Children ReactElement
  */
 const reconcileChildren = (wip: FiberNode, children?: ReactElementType) => {
-	// 对比子节点 current fiberNode 和子节点的 reactElement
 	const current = wip.alternate;
 
 	if (current !== null) {

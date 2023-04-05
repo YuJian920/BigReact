@@ -43,16 +43,27 @@ const prepareFreshStack = (root: FiberRootNode, lane: Lane) => {
 	wipRootRenderLanes = lane;
 };
 
+/**
+ * 从触发更新的 FiberNode 开始作更新准备
+ * @param fiber 触发更新的 FiberNOde
+ * @param lane 触发更新的优先级
+ */
 export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
 	// 对于 mount 阶段，传入的 fiberNode 是 hostRootFiber
 	// 对于 update 阶段，传入的 fiberNode 是触发更新的 fiberNode
 	// 我们需要从我们当前的 fiberNode 一直遍历到 fiberRootNode
 	const root = markUpdateFromFiberToRoot(fiber);
+	// 调用 markRootUpdated 记录 lane 到 FiberRootNode
 	markRootUpdated(root, lane);
 	// 然后从 fiberRootNode 开始更新流程
 	ensureRootIsScheduled(root);
 };
 
+/**
+ * 判断优先级开始调度
+ * @param root FiberRootNode
+ * @returns
+ */
 const ensureRootIsScheduled = (root: FiberRootNode) => {
 	// 获取最高优先级的 lane，就是当前需要更新的 lane
 	const updateLane = getHighestPriorityLanes(root.pendingLanes);
@@ -93,6 +104,12 @@ const markUpdateFromFiberToRoot = (fiber: FiberNode) => {
 	return null;
 };
 
+/**
+ * render 阶段的入口
+ * @param root
+ * @param lane
+ * @returns
+ */
 const performSyncWorkOnRoot = (root: FiberRootNode, lane: Lane) => {
 	const nextLane = getHighestPriorityLanes(root.pendingLanes);
 	if (nextLane !== SyncLane) {
@@ -119,6 +136,7 @@ const performSyncWorkOnRoot = (root: FiberRootNode, lane: Lane) => {
 	root.finishedLane = lane;
 	wipRootRenderLanes = NoLane;
 
+	// 结束 render 阶段，开始 commit 阶段
 	commitRoot(root);
 };
 
@@ -128,6 +146,7 @@ const performSyncWorkOnRoot = (root: FiberRootNode, lane: Lane) => {
  * @returns
  */
 const commitRoot = (root: FiberRootNode) => {
+	// finishedWork 是完成了 render 阶段的完整 fiber 树，从 HostRootFiber 开始
 	const finishedWork = root.finishedWork;
 
 	if (finishedWork === null) return;
@@ -145,6 +164,7 @@ const commitRoot = (root: FiberRootNode) => {
 		(finishedWork.flags & PassiveMask) !== NoFlags ||
 		(finishedWork.subtreeFlags & PassiveMask) !== NoFlags
 	) {
+		// 保证多次执行 commitRoot 函数只会执行一次 scheduleCallback
 		if (!rootDoesHasPassiveEffects) {
 			rootDoesHasPassiveEffects = true;
 			scheduleCallback(NormalPriority, () => {
@@ -155,6 +175,7 @@ const commitRoot = (root: FiberRootNode) => {
 	}
 
 	// 判断是否存在3个子阶段需要执行的操作
+	// mount 阶段，只有 HostRootFiber 存在 flags
 	const subtreeHasEffect = (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
 	const rootHasEffect = (finishedWork.flags & MutationMask) !== NoFlags;
 
@@ -162,6 +183,7 @@ const commitRoot = (root: FiberRootNode) => {
 		// beforeMutation
 		// mutation
 		commitMutationEffects(finishedWork, root);
+		// 切换 currnt 指向，从这里开始 wip 变成 current
 		root.current = finishedWork;
 		// layout
 	} else {
@@ -173,6 +195,10 @@ const commitRoot = (root: FiberRootNode) => {
 	ensureRootIsScheduled(root);
 };
 
+/**
+ * 执行 useEffect 的副作用
+ * @param pendingPassiveEffects FiberRootNode 的 pendingPassiveEffects 属性
+ */
 const flushPassiveEffects = (pendingPassiveEffects: PendingPassiveEffects) => {
 	pendingPassiveEffects.unmount.forEach((effect) => {
 		commitHookEffectListUnmount(Passive, effect);

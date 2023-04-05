@@ -126,6 +126,7 @@ export const createWorkInProgess = (current: FiberNode, pendingProps: Props): Fi
  */
 export const createFiberFromElement = (element: ReactElementType): FiberNode => {
 	const { type, key, props } = element;
+	// 创建 fiberTab 默认为 FunctionComponent
 	let fiberTag: WorkTag = FunctionComponent;
 
 	if (typeof type === 'string') {
